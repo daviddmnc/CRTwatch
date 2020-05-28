@@ -1,0 +1,404 @@
+#include <DS3231.h>
+#include <Wire.h>
+
+DS3231 Clock;
+bool H12;
+bool PM;
+
+int Outputs1[4] = {9,10,11,12}; //Demux 1 pins
+int Outputs2[4] = {8,7,6,5}; // Demux 2 pins
+int AnodeOutputs[2] = {4,13}; // pins determining which Anode to use (eg. left or right display)
+int ButInput = 2; // Pins of buttons
+
+bool Stage = false;
+int CountDw=millis();
+
+const int NoLed=11;  
+
+
+byte Year;    // Init of time units
+byte Month;
+byte Date;
+byte DoW;
+byte Hour;
+byte Minute;
+byte Second;
+byte ButState=0;
+
+
+void setup() {
+  // Start the serial port
+  Serial.begin(9600);
+  pinMode (Outputs1[0], OUTPUT);
+  pinMode (Outputs1[1], OUTPUT);
+  pinMode (Outputs1[2], OUTPUT);
+  pinMode (Outputs1[3], OUTPUT);
+  pinMode (Outputs2[0], OUTPUT);
+  pinMode (Outputs2[1], OUTPUT);
+  pinMode (Outputs2[2], OUTPUT);
+  pinMode (Outputs2[3], OUTPUT);
+  pinMode (ButInput, INPUT);
+  pinMode (3, INPUT);
+  pinMode (AnodeOutputs[0], OUTPUT);
+  pinMode (AnodeOutputs[1], OUTPUT);
+  // Start the I2C interface
+  Wire.begin();
+
+  
+}
+
+void BinaryOut(byte number,byte demux){
+  for (int i=0;i<4;i++){
+    if(bitRead(number, i)==1){
+      switch(demux){
+          case 1:
+          digitalWrite(Outputs1[i], HIGH);
+          break;
+          case 2:
+          digitalWrite(Outputs2[i], HIGH);
+          break;
+      }
+      
+    }else{ 
+      switch(demux){
+          case 1:
+          digitalWrite(Outputs1[i], LOW);
+          break;
+          case 2:
+          digitalWrite(Outputs2[i], LOW);
+          break;
+      }
+      }
+      } 
+
+
+}
+
+
+void loop() {
+  ButState= digitalRead(ButInput);
+  
+  if(((millis()/100)-CountDw)>=10000){
+      Stage = false;
+      digitalWrite(AnodeOutputs[0],LOW);
+      digitalWrite(AnodeOutputs[1],LOW);
+  }
+  if(Stage != false){
+        //WriteTime();//Writes the Time 
+        Serial.println(digitalRead(3));  
+        digitalWrite(AnodeOutputs[1],LOW );
+        BinaryOut(10, 1);    
+  }
+  if(ButState == HIGH && Stage == false){
+    CountDw=(millis()/100);
+    Stage = true;
+  }
+}
+
+void WriteTime( ){
+    byte Hours=Clock.getHour(H12, PM);
+    byte H1=(Hours / 10) % 10;
+    byte H2=Hours % 10;
+    byte Minutes=Clock.getMinute();
+    byte M1=(Minutes / 10) % 10;
+    byte M2=Minutes % 10;
+    NumOneWrite(H1,H2,M1,M2);
+}
+void NumOneWrite(byte Num1, byte Num2, byte Num3,byte Num4){
+   
+   for(byte line=0;line<=4;line++){
+                    //Line of LED display;
+        
+        digitalWrite(AnodeOutputs[1],LOW );  //Turn on the Left Display
+        digitalWrite(AnodeOutputs[0],HIGH);  //Turn off Right Display
+        WriteNumZeroTen(line, Num1, 1);
+
+        //digitalWrite(AnodeOutputs[1],HIGH); //Turn on Right Display
+    
+        //digitalWrite(AnodeOutputs[0],LOW);  //Turn off the Left Display
+        //WriteNumZeroTen(line, Num2);
+
+        
+        
+        
+        
+        //digitalWrite(AnodeOutputs[1],HIGH); //Turn off Right Display
+        
+        //digitalWrite(AnodeOutputs[0],LOW);  //Turn on the Left Display
+        //WriteNumZeroTen(line, Num3);
+
+
+
+        //digitalWrite(AnodeOutputs[0],HIGH);
+        
+        //digitalWrite(AnodeOutputs[1],LOW); //Turn on Right Display
+        //WriteNumZeroTen(line, Num4);
+   }
+    digitalWrite(AnodeOutputs[0],LOW);
+    digitalWrite(AnodeOutputs[1],LOW);     
+   
+}
+
+void WriteNumZeroTen(byte line, byte Num, byte demux){
+    switch(Num){
+               case 0:
+                  WriteZero(line, demux);
+               break;
+               case 1:                    
+                  WriteOne(line, demux);
+               break;
+
+               case 2:
+                  WriteTwo(line, demux);
+               break;
+
+               case 3:
+                  WriteThree(line, demux);
+               break;
+              
+               case 4:
+                  WriteFour(line, demux);
+               break;
+
+               case 5:
+                  WriteFive(line, demux);
+               break;
+
+               case 6:
+                  WriteSix(line, demux);
+               break;
+
+               case 7:
+                  WriteSeven(line, demux);
+               break;
+
+               case 8:
+                 WriteEight(line, demux);
+               break;
+
+               case 9:
+                  WriteNine(line, demux);
+               break;
+        }
+
+
+}
+void WriteZero(byte line,byte demux){
+    switch(line){   //Write a 0
+                  case 0:  
+                      BinaryOut(12, demux);
+                  break;
+                  case 1:
+                      BinaryOut(3, demux);
+                      BinaryOut(10, demux);
+                  break;
+                  case 2:
+                      BinaryOut(NoLed, demux); // WRITES A ZERO TO DEMUX
+                  break;
+                  case 3:
+                      BinaryOut(1, demux);
+                      BinaryOut(9, demux);
+                  break;
+                  case 4:
+                      BinaryOut(7, demux);
+                  break;
+                }
+
+    
+}
+void WriteOne(byte line, byte demux){
+    switch(line){
+                  case 0: 
+                      BinaryOut(0, demux);
+                  break;
+                  case 1:
+                        BinaryOut(14, demux);
+                        BinaryOut(10, demux);
+                  break;
+                  case 2:
+                       BinaryOut(NoLed, demux);  //WRITES A 16 TO DEMUX
+                  break;
+                  case 3:
+                        BinaryOut(9, demux);
+                  break;
+                  case 4:
+                       BinaryOut(0, demux);
+                  break;
+                }
+
+  
+}
+void WriteTwo(byte line, byte demux){
+    switch(line){
+                  case 0: 
+                        BinaryOut(12, demux);
+                  break;
+                  case 1:
+                        BinaryOut(10, demux);
+                  break;
+                  case 2:
+                        BinaryOut(6, demux);
+                  break;
+                  case 3:
+                        BinaryOut(2, demux);
+                  break;
+                  case 4:
+                        BinaryOut(7, demux);
+                  break;
+                }
+
+  
+}
+void WriteThree(byte line, byte demux){
+  switch(line){
+                  case 0: 
+                        BinaryOut(12, demux);
+                  break;
+                  case 1:
+                        BinaryOut(14, demux);
+                  break;
+                  case 2:
+                        BinaryOut(13, demux);
+                  break;
+                  case 3:
+                        BinaryOut(5, demux);
+                  break;
+                  case 4:
+                        BinaryOut(7, demux);
+                  break;
+                }
+
+  
+}
+void WriteFour(byte line, byte demux){
+    switch(line){
+                  case 0: 
+                        BinaryOut(NoLed, demux); // WRITES A ZERO TO DEMUX
+                  break;
+                  case 1:
+                        BinaryOut(3, demux);
+                        BinaryOut(10, demux);
+                  break;
+                  case 2:
+                        BinaryOut(13, demux);
+                        BinaryOut(6, demux);
+                  break;
+                  case 3:
+                        BinaryOut(9, demux);
+                  break;
+                  case 4:
+                        BinaryOut(NoLed, demux); // WRITES A ZERO TO DEMUX
+                  break;
+                }
+
+  
+}
+void WriteFive(byte line, byte demux){
+    switch(line){
+                  case 0: 
+                       BinaryOut(12, demux);
+                  break;
+                  case 1:
+                       BinaryOut(0, demux);
+                  break;
+                  case 2:
+                       BinaryOut(6, demux);
+                  break;
+                  case 3:
+                       BinaryOut(9, demux);
+                  break;
+                  case 4:
+                       BinaryOut(7, demux);
+                  break;
+                }
+
+  
+}
+void WriteSix(byte line, byte demux){
+  switch(line){
+                  case 0: 
+                       BinaryOut(12, demux);
+                  break;
+                  case 1:
+                       BinaryOut(3, demux);
+                  break;
+                  case 2:
+                       BinaryOut(13, demux);
+                  break;
+                  case 3:
+                       BinaryOut(1, demux);
+                       BinaryOut(5, demux);
+                  break;
+                  case 4:
+                       BinaryOut(7, demux);
+                  break;
+
+  
+}
+}
+void WriteSeven(byte line, byte demux){
+  switch(line){
+                  case 0: 
+                       BinaryOut(12, demux);
+                  break;
+                  case 1:
+                       BinaryOut(14, demux);
+                  break;
+                  case 2:
+                       BinaryOut(NoLed, demux); // WRITES A ZERO TO DEMUX
+                  break;
+                  case 3:
+                       BinaryOut(2, demux);
+                  break;
+                  case 4:
+                       BinaryOut(NoLed, demux); // WRITES A ZERO TO DEMUX
+                  break;
+
+  
+}
+}
+void WriteEight(byte line, byte demux){
+     switch(line){
+                  case 0: 
+                       BinaryOut(12, demux);
+                  break;
+                  case 1:
+                       BinaryOut(0, demux);
+                       BinaryOut(14, demux);
+                  break;
+                  case 2:
+                       BinaryOut(NoLed, demux); // WRITES A ZERO TO DEMUX
+                  break;
+                  case 3:
+                       BinaryOut(2, demux);
+                       BinaryOut(5, demux);
+                  break;
+                  case 4:
+                       BinaryOut(7, demux);
+                  break;
+                  }
+
+  
+}
+void WriteNine(byte line, byte demux){
+    switch(line){
+                  case 0: 
+                       BinaryOut(12, demux);
+                  break;
+                  case 1:
+                       BinaryOut(0, demux);
+                       BinaryOut(10, demux);
+                  break;
+                  case 2:
+                       BinaryOut(6, demux);
+                  break;
+                  case 3:
+                       BinaryOut(9, demux);
+                  break;
+                  case 4:
+                       BinaryOut(7, demux);
+                  break;
+                  }
+
+  
+}
